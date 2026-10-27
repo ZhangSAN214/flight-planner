@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>航班规划与特价雷达</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>航班规划与特价雷达</h1>
+  <div id="status" class="status"></div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button data-tab="search" class="active">搜索比价</button>
+  <button data-tab="flex">灵活日期</button>
+  <button data-tab="anywhere">任意目的地</button>
+  <button data-tab="watches">航线监控</button>
+  <button data-tab="deals">特价网站</button>
+</nav>
+
+<main>
+  <!-- 搜索比价 -->
+  <section id="tab-search" class="tab active">
+    <form id="search-form" class="card form-grid">
+      <label>出发<input name="origin" required maxlength="3" placeholder="MAN"></label>
+      <label>到达<input name="destination" required maxlength="3" placeholder="PVG"></label>
+      <label>出发日期<input name="depart_date" type="date" required></label>
+      <label>返程日期<input name="return_date" type="date"><small>不填为单程</small></label>
+      <label>人数<input name="adults" type="number" min="1" max="9" value="1"></label>
+      <label>舱位
+        <select name="cabin">
+          <option value="economy">经济舱</option>
+          <option value="premium_economy">超级经济舱</option>
+          <option value="business">商务舱</option>
+          <option value="first">头等舱</option>
+        </select>
+      </label>
+      <label>中转
+        <select name="max_stops">
+          <option value="">不限</option>
+          <option value="0">仅直飞</option>
+          <option value="1">最多 1 次</option>
+          <option value="2">最多 2 次</option>
+        </select>
+      </label>
+      <label>排序
+        <select name="mode">
+          <option value="best">综合最优</option>
+          <option value="cheapest">最便宜</option>
+          <option value="fastest">最快</option>
+          <option value="fewest_stops">中转最少</option>
+        </select>
+      </label>
+      <label class="wide">时间价值：多飞 1 小时相当于多花 <b id="hv-out">15</b>
+        <input name="hour_value" type="range" min="0" max="80" step="5" value="15">
+      </label>
+      <div class="actions"><button type="submit">搜索</button></div>
+    </form>
+    <div id="search-msg"></div>
+    <div id="search-summary"></div>
+    <div id="scatter" class="card hidden"></div>
+    <div id="results"></div>
+    <div id="search-links" class="card hidden"></div>
+  </section>
+
+  <!-- 灵活日期 -->
+  <section id="tab-flex" class="tab">
+    <form id="flex-form" class="card form-grid">
+      <label>出发<input name="origin" required maxlength="3" placeholder="MAN"></label>
+      <label>到达<input name="destination" required maxlength="3" placeholder="PVG"></label>
+      <label>最早出发<input name="start" type="date" required></label>
+      <label>最晚出发<input name="end" type="date" required></label>
+      <label>停留天数<input name="trip_days" type="number" min="1" max="60" placeholder="单程留空"></label>
+      <div class="actions"><button type="submit">查看日历</button></div>
+    </form>
+    <div id="flex-msg"></div>
+    <div id="flex-result"></div>
+  </section>
+
+  <!-- 任意目的地 -->
+  <section id="tab-anywhere" class="tab">
+    <form id="anywhere-form" class="card form-grid">
+      <label>出发<input name="origin" maxlength="3" placeholder="MAN"></label>
+      <label>月份<input name="month" type="month" required></label>
+      <label>停留天数<input name="trip_days" type="number" min="1" max="60" placeholder="单程留空"></label>
+      <div class="actions"><button type="submit">找最便宜的地方</button></div>
+    </form>
+    <div id="anywhere-msg"></div>
+    <div id="anywhere-result"></div>
+  </section>
+
+  <!-- 航线监控 -->
+  <section id="tab-watches" class="tab">
+    <form id="watch-form" class="card form-grid">
+      <label>出发<input name="origin" required maxlength="3" placeholder="MAN"></label>
+      <label>到达<input name="destination" required maxlength="3" placeholder="PVG"></label>
+      <label>最早出发<input name="depart_from" type="date" required></label>
+      <label>最晚出发<input name="depart_to" type="date" required></label>
+      <label>停留天数<input name="trip_days" type="number" min="1" max="60" placeholder="单程留空"></label>
+      <label>目标价<input name="target_price" type="number" min="1" placeholder="可选"></label>
+      <div class="actions"><button type="submit">添加监控</button></div>
+    </form>
+    <p class="hint">程序会定时查价并记录历史。最低价低于目标价，或比历史中位数低 30% 以上时提醒你。<button id="test-alert" class="link">发送测试提醒</button></p>
+    <div id="watch-msg"></div>
+    <div id="watch-list"></div>
+  </section>
+
+  <!-- 特价网站 -->
+  <section id="tab-deals" class="tab">
+    <form id="deals-form" class="card form-grid">
+      <label class="wide">关注的出发机场（逗号分隔）<input name="airports" placeholder="MAN,LPL,LBA"></label>
+      <div class="actions"><button type="submit">刷新</button></div>
+    </form>
+    <div id="deals-msg"></div>
+    <div id="deals-list"></div>
+  </section>
+</main>
+
+<dialog id="booking-dialog">
+  <div class="dialog-head"><h2>各渠道价格</h2><button class="link" id="dialog-close">关闭</button></div>
+  <div id="booking-body"></div>
+</dialog>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

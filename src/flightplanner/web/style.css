@@ -1,0 +1,122 @@
+:root {
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --text: #1c2430;
+  --muted: #5f6b7a;
+  --line: #dfe3e8;
+  --accent: #2563eb;
+  --accent-soft: #e6eefc;
+  --good: #15803d;
+  --good-soft: #e3f4e8;
+  --warn: #b45309;
+  --warn-soft: #fbf0dc;
+  --bad: #b91c1c;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12161c;
+    --card: #1b2129;
+    --text: #e6e9ee;
+    --muted: #9aa5b3;
+    --line: #2d3540;
+    --accent: #6b9cff;
+    --accent-soft: #1f2d48;
+    --good: #4ade80;
+    --good-soft: #173323;
+    --warn: #fbbf24;
+    --warn-soft: #3a2e14;
+    --bad: #f87171;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font: 15px/1.5 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; padding: 20px 20px 8px; max-width: 1100px; margin: 0 auto; }
+h1 { font-size: 22px; margin: 0; }
+h2 { font-size: 17px; margin: 0 0 8px; }
+.status { color: var(--muted); font-size: 13px; }
+.status .pill { display: inline-block; padding: 1px 8px; border-radius: 99px; background: var(--warn-soft); color: var(--warn); margin-right: 6px; }
+.tabs { display: flex; gap: 4px; max-width: 1100px; margin: 0 auto; padding: 0 20px; overflow-x: auto; border-bottom: 1px solid var(--line); }
+.tabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 12px; color: var(--muted); font: inherit; cursor: pointer; white-space: nowrap; }
+.tabs button.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+main { max-width: 1100px; margin: 0 auto; padding: 16px 20px 60px; }
+.tab { display: none; }
+.tab.active { display: block; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+.hidden { display: none; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; align-items: end; }
+.form-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.form-grid label.wide { grid-column: 1 / -1; }
+.form-grid small { font-size: 11px; }
+input, select { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
+input[type=range] { padding: 0; }
+input[name=origin], input[name=destination] { text-transform: uppercase; }
+button { font: inherit; cursor: pointer; }
+.actions button, button.primary { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 8px 18px; font-weight: 600; }
+button.secondary { background: var(--accent-soft); color: var(--accent); border: 0; border-radius: 8px; padding: 6px 12px; }
+button.link { background: none; border: 0; color: var(--accent); padding: 0 4px; }
+.hint { color: var(--muted); font-size: 13px; }
+.msg { padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; background: var(--warn-soft); color: var(--warn); }
+.msg.error { color: var(--bad); }
+.loading { color: var(--muted); padding: 10px 0; }
+
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.summary .card { margin: 0; }
+.summary .k { color: var(--muted); font-size: 13px; }
+.summary .v { font-size: 22px; font-weight: 700; }
+
+.itin { display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; }
+.itin .price { font-size: 22px; font-weight: 700; text-align: right; }
+.itin .price small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
+.slice { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 4px 0; }
+.slice .time { font-weight: 600; font-variant-numeric: tabular-nums; }
+.slice .path { color: var(--muted); }
+.meta { color: var(--muted); font-size: 13px; }
+.tag { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 99px; margin-right: 4px; background: var(--accent-soft); color: var(--accent); }
+.tag.good { background: var(--good-soft); color: var(--good); }
+.tag.warn { background: var(--warn-soft); color: var(--warn); }
+.itin .buttons { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; }
+
+.links { display: flex; flex-wrap: wrap; gap: 8px; }
+.links a { color: var(--accent); background: var(--accent-soft); padding: 4px 10px; border-radius: 8px; text-decoration: none; font-size: 13px; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top; }
+th { color: var(--muted); font-weight: 500; font-size: 13px; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.cheapest td { background: var(--good-soft); }
+
+.calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.calendar .dow { text-align: center; color: var(--muted); font-size: 12px; }
+.calendar .day { border-radius: 8px; padding: 6px 4px; text-align: center; min-height: 52px; cursor: pointer; border: 1px solid transparent; }
+.calendar .day.empty { cursor: default; }
+.calendar .day:hover:not(.empty) { border-color: var(--accent); }
+.calendar .d { font-size: 11px; color: var(--muted); }
+.calendar .p { font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
+.calendar .month { grid-column: 1 / -1; font-weight: 600; margin-top: 8px; }
+.legend { display: flex; gap: 10px; align-items: center; font-size: 12px; color: var(--muted); margin-top: 8px; }
+.legend span { display: inline-block; width: 22px; height: 12px; border-radius: 3px; vertical-align: middle; }
+
+svg text { fill: var(--muted); font-size: 11px; }
+svg .axis { stroke: var(--line); }
+svg .dot { fill: var(--accent); fill-opacity: 0.35; }
+svg .dot.front { fill-opacity: 1; }
+svg .dot:hover { stroke: var(--text); }
+svg .frontline { stroke: var(--accent); fill: none; stroke-dasharray: 4 3; }
+
+dialog { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); color: var(--text); width: min(760px, 94vw); padding: 18px; }
+dialog::backdrop { background: rgb(0 0 0 / 0.4); }
+.dialog-head { display: flex; justify-content: space-between; align-items: center; }
+
+@media (max-width: 600px) {
+  header, main, .tabs { padding-left: 16px; padding-right: 16px; }
+  .itin { grid-template-columns: 1fr; }
+  .itin .price { text-align: left; }
+  .calendar .day { min-height: 44px; padding: 4px 2px; }
+  .calendar .p { font-size: 12px; }
+}
