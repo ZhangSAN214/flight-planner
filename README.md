@@ -58,7 +58,7 @@ flightplanner check       # 立即检查所有航线监控
 - `SERPAPI_MONTHLY_LIMIT` 是每月调用上限，到了就停，防止超预算。每次搜索用 1 次；查看一个航班的各渠道价格再用 1 到 2 次。
 - 查询结果缓存 `CACHE_MINUTES` 分钟，同样的条件不重复扣费。
 - 没有 Travelpayouts 时，灵活日期会改为逐天实时查询（最多 7 天），任意目的地不可用。
-- 「自动排顺序」有 Travelpayouts 时用免费缓存价估算，不消耗 SerpApi；没有时改用实时查询，单次最多 20 次搜索（3 个城市、出发日不浮动约需 9 次）。
+- 「自动排顺序」有 Travelpayouts 时用免费缓存价估算，不消耗 SerpApi；没有时改用实时查询，单次最多 20 次搜索（3 个城市、出发日不浮动并回到出发地约需 18 次），所以建议填上免费的 Travelpayouts。
 - 不同数据源货币不同时，用欧洲央行汇率（frankfurter.app，免费）换算成 `CURRENCY` 再比较。
 
 ### 提醒
