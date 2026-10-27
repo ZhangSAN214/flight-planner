@@ -30,6 +30,7 @@ class Leg(BaseModel):
     origin: str
     destination: str
     date: date
+    flight_number: str | None = None  # 指定这一段的航班，如 JU 652
 
 
 class Stop(BaseModel):
@@ -44,7 +45,10 @@ async def multi_leg(planner: Planner, legs: list[Leg], prefs: Preferences, per_l
     for a, b in zip(legs, legs[1:]):
         if b.date < a.date:
             raise ProviderError(f"第 {legs.index(b) + 1} 段的日期早于上一段")
-    queries = [SearchQuery(origin=l.origin, destination=l.destination, depart_date=l.date, **query_kwargs) for l in legs]
+    queries = [
+        SearchQuery(origin=l.origin, destination=l.destination, depart_date=l.date, flight_number=l.flight_number or None, **query_kwargs)
+        for l in legs
+    ]
     results = await asyncio.gather(*(planner.search(q, prefs) for q in queries))
     out_legs = []
     totals = {"cheapest": 0.0, "best": 0.0}

@@ -57,6 +57,7 @@ input, select { font: inherit; color: var(--text); background: var(--bg); border
 input[type=range] { padding: 0; }
 .stops { display: flex; flex-direction: column; gap: 8px; }
 .stop-row { display: grid; grid-template-columns: 28px minmax(120px, 2fr) minmax(120px, 2fr) minmax(150px, 1.4fr) 32px; gap: 8px; align-items: center; }
+.stop-row.leg { grid-template-columns: 28px minmax(110px, 2fr) minmax(110px, 2fr) minmax(150px, 1.4fr) minmax(110px, 1fr) 32px; }
 .stop-row.city { grid-template-columns: 28px minmax(140px, 3fr) minmax(90px, 1fr) 32px; max-width: 560px; }
 .stop-row .n { color: var(--muted); font-size: 13px; text-align: center; }
 .stop-row button { background: none; border: 0; color: var(--muted); font-size: 18px; }
@@ -68,6 +69,9 @@ input[type=range] { padding: 0; }
   .stop-row { grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1fr) 28px; }
   .stop-row input[type=date] { grid-column: 2 / 4; grid-row: 2; }
   .stop-row button { grid-column: 4; grid-row: 1; }
+  .stop-row.leg { grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1fr) 28px; }
+  .stop-row.leg input[type=date] { grid-column: 2 / 3; }
+  .stop-row.leg input:not(.place):not([type=date]) { grid-column: 3 / 4; grid-row: 2; }
   .stop-row.city { grid-template-columns: 22px minmax(0, 1fr) 70px 28px; }
 }
 button { font: inherit; cursor: pointer; }

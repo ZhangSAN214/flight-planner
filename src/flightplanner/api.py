@@ -33,6 +33,7 @@ class LegIn(BaseModel):
     origin: str
     destination: str
     date: date
+    flight_number: str | None = None
 
 
 class MultiCityIn(BaseModel):
@@ -157,7 +158,7 @@ def create_app(settings: Settings | None = None, planner: Planner | None = None,
 
     @app.post("/api/multi-city")
     async def multi_city(body: MultiCityIn):
-        legs = [Leg(origin=place(l.origin), destination=place(l.destination), date=l.date) for l in body.legs]
+        legs = [Leg(origin=place(l.origin), destination=place(l.destination), date=l.date, flight_number=(l.flight_number or "").strip() or None) for l in body.legs]
         try:
             return await multi_leg(
                 planner, legs, Preferences(mode=body.mode, hour_value=body.hour_value),

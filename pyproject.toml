@@ -1,6 +1,6 @@
 [project]
 name = "flightplanner"
-version = "0.2.0"
+version = "0.2.1"
 description = "个人航班规划与特价雷达：多数据源比价、综合排序、灵活日期、航线监控"
 requires-python = ">=3.11"
 dependencies = [

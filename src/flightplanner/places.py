@@ -294,6 +294,7 @@ U2|易捷/易捷航空|easyJet
 FR|瑞安/瑞安航空|Ryanair
 LS|Jet2|Jet2
 W6|威兹/威兹航空|Wizz Air
+W9|威兹英国|Wizz Air UK
 EI|爱尔兰航空|Aer Lingus
 AF|法航/法国航空|Air France
 KL|荷航/荷兰皇家航空|KLM

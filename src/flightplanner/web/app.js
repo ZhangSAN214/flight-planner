@@ -520,12 +520,13 @@ function renderOptimize(data) {
 }
 
 // ---------- 多城市：多段航线 ----------
-function legRow(origin = "", destination = "", date = "") {
+function legRow(origin = "", destination = "", date = "", flight = "") {
   const row = document.createElement("div");
-  row.className = "stop-row";
+  row.className = "stop-row leg";
   row.innerHTML = `<span class="n"></span><input class="place" list="places-list" autocomplete="off" placeholder="从" value="${esc(origin)}" required>
     <input class="place" list="places-list" autocomplete="off" placeholder="到" value="${esc(destination)}" required>
-    <input type="date" value="${esc(date)}" required><button type="button" title="删除">×</button>`;
+    <input type="date" value="${esc(date)}" required><input placeholder="航班号（可选）" value="${esc(flight)}" title="只看这个航班，如 JU 652">
+    <button type="button" title="删除">×</button>`;
   row.querySelector("button").addEventListener("click", () => { row.remove(); renumber("#legs"); });
   $("#legs").appendChild(row);
   renumber("#legs");
@@ -544,7 +545,7 @@ $("#legs-form").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   const f = ev.target;
   const body = {
-    legs: $$("#legs .stop-row").map((r) => ({ origin: r.children[1].value.trim(), destination: r.children[2].value.trim(), date: r.children[3].value })),
+    legs: $$("#legs .stop-row").map((r) => ({ origin: r.children[1].value.trim(), destination: r.children[2].value.trim(), date: r.children[3].value, flight_number: r.children[4].value.trim() || null })),
     mode: f.mode.value,
     airlines: f.airlines.value.trim() || null,
   };
@@ -584,6 +585,17 @@ $("#legs-form").addEventListener("submit", async (ev) => {
   $("#hv-out").textContent = money(15);
   $("#opt-form [name=start]").value = addDays(30);
   ["巴黎", "罗马", "贝尔格莱德"].forEach((c, i) => stopRow(c, [3, 4, 2][i]));
+  // 链接里带了行程（#trip=[[从,到,日期,航班号],...]）时直接填入多段航线并查询
+  let trip = null;
+  try { if (location.hash.startsWith("#trip=")) trip = JSON.parse(decodeURIComponent(location.hash.slice(6))); } catch (e) { trip = null; }
+  if (Array.isArray(trip) && trip.length) {
+    trip.forEach((l) => legRow(...l.map(String)));
+    history.replaceState(null, "", location.pathname);
+    switchTab("multi");
+    loadStatus();
+    setTimeout(() => { $("#legs-form").requestSubmit(); $("#legs-form").scrollIntoView(); }, 300);
+    return;
+  }
   legRow("", "巴黎", addDays(30));
   legRow("巴黎", "罗马", addDays(34));
   loadStatus();
