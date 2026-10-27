@@ -11,6 +11,8 @@ import random
 from datetime import date, datetime, timedelta
 
 from ..models import BookingOption, DateQuote, Itinerary, SearchQuery, Segment, Slice
+from ..places import AIRLINES as AIRLINE_NAMES
+from ..places import airports_for
 from .base import FlightProvider, PriceCalendarProvider
 
 AIRLINES = [
@@ -49,6 +51,7 @@ COORDS = {
 def _route_base(origin: str, destination: str) -> tuple[int, float]:
     """返回（直飞分钟数，基础票价），按航线固定。"""
     r = _rng("route", *sorted([origin, destination]))
+    origin, destination = airports_for(origin)[0], airports_for(destination)[0]
     if origin in COORDS and destination in COORDS:
         (la1, lo1), (la2, lo2) = COORDS[origin], COORDS[destination]
         p1, p2, dl = math.radians(la1), math.radians(la2), math.radians(lo2 - lo1)
@@ -63,7 +66,7 @@ def _slice(r: random.Random, origin: str, destination: str, day: date, base_minu
     code, name = airline
     hour = r.choice([0, 1, 6, 7, 8, 9, 10, 11, 13, 14, 15, 17, 19, 21, 22, 23])
     t = datetime.combine(day, datetime.min.time()) + timedelta(hours=hour, minutes=r.choice([0, 15, 30, 45]))
-    points = [origin] + r.sample(HUBS, stops) + [destination]
+    points = [airports_for(origin)[0]] + r.sample([h for h in HUBS if h not in (origin, destination)], stops) + [airports_for(destination)[0]]
     segments: list[Segment] = []
     leg_total = base_minutes * (1 + 0.18 * stops)
     for i in range(len(points) - 1):
@@ -94,9 +97,13 @@ class DemoFlightProvider(FlightProvider):
         base_minutes, base_price = _route_base(query.origin, query.destination)
         r = _rng("search", query.origin, query.destination, query.depart_date, query.return_date)
         demand = 1 + 0.25 * math.sin(query.depart_date.toordinal() / 5)
+        pool = AIRLINES if base_minutes < 300 else [a for a in AIRLINES if a[0] != "FR"]
+        wanted = query.airlines or ([query.flight_number[:2]] if query.flight_number else [])
+        if wanted:
+            pool = [(c, AIRLINE_NAMES.get(c, (c, c))[1]) for c in wanted]
         result = []
         for i in range(24):
-            airline = r.choice(AIRLINES if base_minutes < 300 else [a for a in AIRLINES if a[0] != "FR"])
+            airline = r.choice(pool)
             stops = 0 if (base_minutes < 240 and r.random() < 0.7) else r.choice([0, 1, 1, 1, 2])
             if query.max_stops is not None:
                 stops = min(stops, query.max_stops)
@@ -106,6 +113,8 @@ class DemoFlightProvider(FlightProvider):
             price = base_price * demand * (1.35 if stops == 0 else 1.0 - 0.06 * stops) * r.uniform(0.75, 1.35)
             price *= 1.8 if query.return_date else 1
             price *= {"economy": 1, "premium_economy": 1.7, "business": 3.8, "first": 6}[query.cabin.value]
+            if query.flight_number and i % 6 == 0:
+                slices[0].segments[0].flight_number = f"{query.flight_number[:2]} {query.flight_number[2:]}"
             result.append(
                 Itinerary(
                     id=f"demo-{query.origin}{query.destination}-{query.depart_date:%m%d}-{i}",

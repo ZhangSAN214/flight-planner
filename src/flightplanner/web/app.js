@@ -66,7 +66,9 @@ async function loadStatus() {
     if (!s.demo_mode && s.flight_sources.includes("Google Flights")) parts.push(`本月 SerpApi ${s.serpapi_used_this_month}/${s.serpapi_monthly_limit} 次`);
     parts.push(s.alert_channels.length ? `提醒：${esc(s.alert_channels.join("、"))}` : "提醒：未配置");
     $("#status").innerHTML = parts.join(" · ");
-    $$("input[name=origin]").forEach((i) => { if (!i.value) i.value = s.home_airport; });
+    $$("input[name=origin], input[name=home]").forEach((i) => { if (!i.value) i.value = s.home_airport; });
+    const firstLeg = $("#legs .stop-row input.place");
+    if (firstLeg && !firstLeg.value) firstLeg.value = s.home_airport;
     if (!$("#deals-form [name=airports]").value) $("#deals-form [name=airports]").value = s.home_airport;
   } catch (e) {
     $("#status").textContent = "无法连接后端：" + e.message;
@@ -84,6 +86,7 @@ searchForm.addEventListener("submit", async (ev) => {
   $("#results").innerHTML = "";
   $("#search-summary").innerHTML = "";
   $("#scatter").classList.add("hidden");
+  $("#airline-summary").classList.add("hidden");
   $("#search-links").classList.add("hidden");
   loading("#search-msg", "正在查询各数据源…");
   try {
@@ -106,12 +109,28 @@ function renderSearch(data) {
   }
   const pick = (t) => its.find((i) => i.tags.includes(t));
   const card = (k, it) => it ? `<div class="card"><div class="k">${k}</div><div class="v">${money(price(it))}</div><div class="meta">${hm(it.total_minutes)} · 中转 ${it.total_stops} 次 · ${esc(it.airlines.join("/"))}</div></div>` : "";
-  $("#search-summary").innerHTML = `<div class="summary">${card("最便宜", pick("cheapest"))}${card("最快", pick("fastest"))}${card("综合最优", pick("best"))}</div>`;
+  $("#search-summary").innerHTML = `<h2>${esc(data.origin_name)} → ${esc(data.destination_name)}</h2><div class="summary">${card("最便宜", pick("cheapest"))}${card("最快", pick("fastest"))}${card("综合最优", pick("best"))}</div>`;
+  renderAirlineSummary(data);
   renderScatter(its);
   renderItineraries();
 }
 
 const price = (it) => it.price_display ?? it.price;
+
+function renderAirlineSummary(data) {
+  const rows = data.airline_summary;
+  if (!rows.length) return;
+  const el = $("#airline-summary");
+  el.innerHTML = `<h2>这条航线的航司</h2><div class="meta">每家航司（或航司组合）的最低价。点「只看它」按航司重新搜索。</div>
+    <table><thead><tr><th>航司</th><th class="num">最低价</th><th class="num">方案数</th><th>直飞</th><th></th></tr></thead><tbody>
+    ${rows.map((r) => `<tr><td>${esc(r.airline)}</td><td class="num">${money(r.min_price)}</td><td class="num">${r.count}</td><td>${r.nonstop ? "有" : ""}</td>
+      <td>${r.codes.length ? `<button class="link" data-only="${esc(r.codes.join(","))}">只看它</button>` : ""}</td></tr>`).join("")}</tbody></table>`;
+  el.classList.remove("hidden");
+  $$("#airline-summary [data-only]").forEach((b) => b.addEventListener("click", () => {
+    searchForm.airlines.value = b.dataset.only;
+    searchForm.requestSubmit();
+  }));
+}
 
 function renderItineraries() {
   const its = state.lastSearch.itineraries;
@@ -419,6 +438,140 @@ async function loadDeals() {
   }
 }
 
+// ---------- 地点自动补全 ----------
+let placeTimer = null;
+document.addEventListener("input", (ev) => {
+  const el = ev.target;
+  if (!el.classList || !el.classList.contains("place")) return;
+  clearTimeout(placeTimer);
+  const q = el.value.trim();
+  if (!q) return;
+  placeTimer = setTimeout(async () => {
+    try {
+      const items = await api("/api/places?" + qs({ q }));
+      $("#places-list").innerHTML = items.map((p) => `<option value="${esc(p.name)}">${esc(p.label)}</option>`).join("");
+    } catch (e) { /* 补全失败不影响输入 */ }
+  }, 150);
+});
+
+// ---------- 多城市：自动排顺序 ----------
+function stopRow(place = "", days = 3) {
+  const row = document.createElement("div");
+  row.className = "stop-row city";
+  row.innerHTML = `<span class="n"></span><input class="place" list="places-list" autocomplete="off" placeholder="城市，如 巴黎" value="${esc(place)}" required>
+    <input type="number" min="1" max="60" value="${days}" title="停留天数" required><button type="button" title="删除">×</button>`;
+  row.querySelector("button").addEventListener("click", () => { row.remove(); renumber("#stops"); });
+  $("#stops").appendChild(row);
+  renumber("#stops");
+}
+function renumber(sel) { $$(sel + " .n").forEach((n, i) => { n.textContent = i + 1; }); }
+$("#add-stop").addEventListener("click", () => stopRow());
+
+$("#opt-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  await runOptimize(false);
+});
+
+async function runOptimize(live) {
+  const f = $("#opt-form");
+  const body = {
+    home: f.home.value.trim(),
+    start: f.start.value,
+    start_flex_days: +f.start_flex_days.value,
+    return_home: f.return_home.value === "true",
+    live,
+    stops: $$("#stops .stop-row").map((r) => ({ place: r.children[1].value.trim(), days: +r.children[2].value })),
+  };
+  showMsg("#opt-msg", "");
+  loading("#opt-result", "正在比较所有顺序…");
+  try {
+    const data = await api("/api/optimize", { method: "POST", body: JSON.stringify(body) });
+    showMsg("#opt-msg", data.errors.join("；"));
+    renderOptimize(data);
+  } catch (e) {
+    $("#opt-result").innerHTML = "";
+    showMsg("#opt-msg", e.message, true);
+  }
+}
+
+function renderOptimize(data) {
+  const cur = data.currency;
+  const cards = data.results.map((r, i) => {
+    const saving = data.worst_total && r.total ? data.worst_total - r.total : null;
+    const order = [data.home_name, ...r.order, ...(r.legs.length > r.order.length ? [data.home_name] : [])]
+      .map((n) => `<span>${esc(n)}</span>`).join(`<span class="arrow">→</span>`);
+    const legs = r.legs.map((l) => `<tr><td>${l.date}</td><td>${esc(l.origin_name)} → ${esc(l.destination_name)}</td>
+      <td class="num">${l.price === null ? "无数据" : money(l.price, cur)}${l.estimated ? ` <span class="est">估</span>` : ""}</td></tr>`).join("");
+    return `<div class="card"><div class="leg-head"><div class="order">${i === 0 ? `<span class="tag good">最省钱</span>` : `<span class="meta">#${i + 1}</span>`}${order}</div>
+      <div class="price"><b>${r.total === null ? "数据不全" : money(r.total, cur)}</b>${saving && i === 0 ? ` <span class="meta">比最贵的顺序省 ${money(saving, cur)}</span>` : ""}</div></div>
+      <table><tbody>${legs}</tbody></table>
+      <div class="buttons"><button class="secondary" data-legs="${i}">按这个顺序查各段实时航班</button></div></div>`;
+  }).join("");
+  const liveBtn = data.price_type !== "实时价" ? ` <button class="link" id="opt-live">改用实时价重新计算</button>` : "";
+  $("#opt-result").innerHTML = `<p class="hint">共比较了 ${data.plans_checked} 种走法，价格为${esc(data.price_type)}${data.searches_used ? `（用了 ${data.searches_used} 次搜索）` : ""}。标「估」的是用附近几天价格估算的。${liveBtn}</p>${cards}`;
+  if (liveBtn) $("#opt-live").addEventListener("click", () => runOptimize(true));
+  $$("#opt-result [data-legs]").forEach((b) => b.addEventListener("click", () => {
+    const r = data.results[+b.dataset.legs];
+    $("#legs").innerHTML = "";
+    r.legs.forEach((l) => legRow(l.origin, l.destination, l.date));
+    $("#legs-form").requestSubmit();
+    $("#legs-form").scrollIntoView({ behavior: "smooth" });
+  }));
+}
+
+// ---------- 多城市：多段航线 ----------
+function legRow(origin = "", destination = "", date = "") {
+  const row = document.createElement("div");
+  row.className = "stop-row";
+  row.innerHTML = `<span class="n"></span><input class="place" list="places-list" autocomplete="off" placeholder="从" value="${esc(origin)}" required>
+    <input class="place" list="places-list" autocomplete="off" placeholder="到" value="${esc(destination)}" required>
+    <input type="date" value="${esc(date)}" required><button type="button" title="删除">×</button>`;
+  row.querySelector("button").addEventListener("click", () => { row.remove(); renumber("#legs"); });
+  $("#legs").appendChild(row);
+  renumber("#legs");
+}
+$("#add-leg").addEventListener("click", () => {
+  const rows = $$("#legs .stop-row");
+  const last = rows[rows.length - 1];
+  let date = "";
+  if (last && last.children[3].value) {
+    const d = new Date(last.children[3].value + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + 3); date = isoDate(d);
+  }
+  legRow(last ? last.children[2].value : "", "", date);
+});
+
+$("#legs-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const f = ev.target;
+  const body = {
+    legs: $$("#legs .stop-row").map((r) => ({ origin: r.children[1].value.trim(), destination: r.children[2].value.trim(), date: r.children[3].value })),
+    mode: f.mode.value,
+    airlines: f.airlines.value.trim() || null,
+  };
+  showMsg("#legs-msg", "");
+  loading("#legs-result", "正在查询每一段…");
+  try {
+    const data = await api("/api/multi-city", { method: "POST", body: JSON.stringify(body) });
+    showMsg("#legs-msg", data.warnings.join("；"));
+    state.legSearches = data.legs;
+    const head = `<div class="summary"><div class="card"><div class="k">每段都选最便宜</div><div class="v">${money(data.total_cheapest, data.currency)}</div></div>
+      <div class="card"><div class="k">每段都选综合最优</div><div class="v">${money(data.total_best, data.currency)}</div></div></div><p class="hint">${esc(data.note)}</p>`;
+    $("#legs-result").innerHTML = head + data.legs.map((leg, i) => `<div class="card"><div class="leg-head"><h2>第 ${i + 1} 段：${esc(leg.origin_name)} → ${esc(leg.destination_name)}，${leg.query.depart_date}</h2>
+      <span class="meta">共 ${leg.total_found} 个方案</span></div>${leg.itineraries.length ? leg.itineraries.map(itinCard).join("") : `<p class="meta">没有找到航班。</p>`}
+      <div class="links">${leg.links.map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.name)}</a>`).join("")}</div></div>`).join("");
+    // 多段结果里的按钮：比价可直接用；监控需要对应的搜索上下文
+    $$("#legs-result [data-booking]").forEach((b) => b.addEventListener("click", () => openBooking(b.dataset.booking)));
+    $$("#legs-result [data-watch]").forEach((b) => b.addEventListener("click", () => {
+      const leg = data.legs.find((l) => l.itineraries.some((it) => it.id === b.dataset.watch));
+      state.lastSearch = leg;
+      prefillWatch(b.dataset.watch);
+    }));
+  } catch (e) {
+    $("#legs-result").innerHTML = "";
+    showMsg("#legs-msg", e.message, true);
+  }
+});
+
 // ---------- 初始化 ----------
 (function init() {
   searchForm.depart_date.value = addDays(30);
@@ -429,6 +582,10 @@ async function loadDeals() {
   const next = new Date(); next.setMonth(next.getMonth() + 1);
   $("#anywhere-form [name=month]").value = isoDate(next).slice(0, 7);
   $("#hv-out").textContent = money(15);
+  $("#opt-form [name=start]").value = addDays(30);
+  ["巴黎", "罗马", "贝尔格莱德"].forEach((c, i) => stopRow(c, [3, 4, 2][i]));
+  legRow("", "巴黎", addDays(30));
+  legRow("巴黎", "罗马", addDays(34));
   loadStatus();
   let tab = "search";
   try { tab = localStorage.getItem("tab") || "search"; } catch (e) { /* 忽略 */ }

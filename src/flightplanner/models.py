@@ -8,6 +8,14 @@ from enum import Enum
 from pydantic import BaseModel, Field, field_validator
 
 
+def normalize_flight_number(v: str) -> str:
+    """'ju381' / 'JU 381' / 'JU0381' → 'JU381'"""
+    v = v.replace(" ", "").upper()
+    if len(v) > 2 and v[2:].isdigit():
+        v = v[:2] + str(int(v[2:]))
+    return v
+
+
 class Cabin(str, Enum):
     economy = "economy"
     premium_economy = "premium_economy"
@@ -23,11 +31,23 @@ class SearchQuery(BaseModel):
     adults: int = Field(default=1, ge=1, le=9)
     cabin: Cabin = Cabin.economy
     max_stops: int | None = Field(default=None, ge=0, le=3)
+    airlines: list[str] = Field(default_factory=list, description="只看这些航司（二字代码）")
+    flight_number: str | None = Field(default=None, description="指定航班号，如 JU 381")
 
     @field_validator("origin", "destination")
     @classmethod
     def upper(cls, v: str) -> str:
         return v.upper()
+
+    @field_validator("airlines")
+    @classmethod
+    def upper_list(cls, v: list[str]) -> list[str]:
+        return [a.upper() for a in v]
+
+    @field_validator("flight_number")
+    @classmethod
+    def norm_flight(cls, v: str | None) -> str | None:
+        return normalize_flight_number(v) if v else None
 
     @property
     def round_trip(self) -> bool:
@@ -88,6 +108,20 @@ class Itinerary(BaseModel):
                 if name and name not in names:
                     names.append(name)
         return names
+
+    @property
+    def carrier_codes(self) -> set[str]:
+        return {seg.carrier_code for s in self.slices for seg in s.segments if seg.carrier_code}
+
+    def matches(self, airlines: list[str], flight_number: str | None) -> bool:
+        """指定航司时，所有航段都必须是这些航司；指定航班号时，至少一段是这个航班。"""
+        if airlines and not (self.carrier_codes and self.carrier_codes <= set(airlines)):
+            return False
+        if flight_number:
+            numbers = {normalize_flight_number(seg.flight_number) for s in self.slices for seg in s.segments if seg.flight_number}
+            if flight_number not in numbers:
+                return False
+        return True
 
     def fingerprint(self) -> str:
         """同一组航班号 + 起飞时间视为同一行程，用于跨数据源去重。"""

@@ -13,6 +13,7 @@ import httpx
 
 from ..db import Store
 from ..models import BookingOption, Cabin, Itinerary, SearchQuery, Segment, Slice
+from ..places import airports_for
 from .base import FlightProvider, ProviderError
 
 ENDPOINT = "https://serpapi.com/search.json"
@@ -38,8 +39,9 @@ class SerpApiProvider(FlightProvider):
     def _base_params(self, q: SearchQuery) -> dict:
         params = {
             "engine": "google_flights",
-            "departure_id": q.origin,
-            "arrival_id": q.destination,
+            # 城市代码（如伦敦 LON）展开成该城市的全部机场，SerpApi 支持逗号分隔
+            "departure_id": ",".join(airports_for(q.origin)),
+            "arrival_id": ",".join(airports_for(q.destination)),
             "outbound_date": q.depart_date.isoformat(),
             "type": 1 if q.round_trip else 2,
             "travel_class": TRAVEL_CLASS[q.cabin],
@@ -52,6 +54,9 @@ class SerpApiProvider(FlightProvider):
             params["return_date"] = q.return_date.isoformat()
         if q.max_stops is not None and q.max_stops in STOPS:
             params["stops"] = STOPS[q.max_stops]
+        airlines = q.airlines or ([q.flight_number[:2]] if q.flight_number else [])
+        if airlines:
+            params["include_airlines"] = ",".join(airlines)
         return params
 
     async def _call(self, params: dict) -> dict:

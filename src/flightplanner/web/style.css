@@ -51,11 +51,25 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px 20px 60px; }
 .hidden { display: none; }
 .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; align-items: end; }
 .form-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
-.form-grid label.wide { grid-column: 1 / -1; }
+.form-grid .wide { grid-column: 1 / -1; }
 .form-grid small { font-size: 11px; }
 input, select { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
 input[type=range] { padding: 0; }
-input[name=origin], input[name=destination] { text-transform: uppercase; }
+.stops { display: flex; flex-direction: column; gap: 8px; }
+.stop-row { display: grid; grid-template-columns: 28px minmax(120px, 2fr) minmax(120px, 2fr) minmax(150px, 1.4fr) 32px; gap: 8px; align-items: center; }
+.stop-row.city { grid-template-columns: 28px minmax(140px, 3fr) minmax(90px, 1fr) 32px; max-width: 560px; }
+.stop-row .n { color: var(--muted); font-size: 13px; text-align: center; }
+.stop-row button { background: none; border: 0; color: var(--muted); font-size: 18px; }
+.order { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 600; }
+.order .arrow { color: var(--muted); font-weight: 400; }
+.leg-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.est { color: var(--warn); font-size: 12px; }
+@media (max-width: 600px) {
+  .stop-row { grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1fr) 28px; }
+  .stop-row input[type=date] { grid-column: 2 / 4; grid-row: 2; }
+  .stop-row button { grid-column: 4; grid-row: 1; }
+  .stop-row.city { grid-template-columns: 22px minmax(0, 1fr) 70px 28px; }
+}
 button { font: inherit; cursor: pointer; }
 .actions button, button.primary { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 8px 18px; font-weight: 600; }
 button.secondary { background: var(--accent-soft); color: var(--accent); border: 0; border-radius: 8px; padding: 6px 12px; }

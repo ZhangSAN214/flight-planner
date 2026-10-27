@@ -14,6 +14,7 @@
 
 <nav class="tabs" role="tablist">
   <button data-tab="search" class="active">搜索比价</button>
+  <button data-tab="multi">多城市</button>
   <button data-tab="flex">灵活日期</button>
   <button data-tab="anywhere">任意目的地</button>
   <button data-tab="watches">航线监控</button>
@@ -24,8 +25,8 @@
   <!-- 搜索比价 -->
   <section id="tab-search" class="tab active">
     <form id="search-form" class="card form-grid">
-      <label>出发<input name="origin" required maxlength="3" placeholder="MAN"></label>
-      <label>到达<input name="destination" required maxlength="3" placeholder="PVG"></label>
+      <label>出发<input name="origin" required class="place" list="places-list" autocomplete="off" placeholder="城市或机场，如 曼彻斯特"></label>
+      <label>到达<input name="destination" required class="place" list="places-list" autocomplete="off" placeholder="如 贝尔格莱德 / BEG"></label>
       <label>出发日期<input name="depart_date" type="date" required></label>
       <label>返程日期<input name="return_date" type="date"><small>不填为单程</small></label>
       <label>人数<input name="adults" type="number" min="1" max="9" value="1"></label>
@@ -53,6 +54,8 @@
           <option value="fewest_stops">中转最少</option>
         </select>
       </label>
+      <label>指定航司<input name="airlines" placeholder="如 英航、JU，可多个"></label>
+      <label>航班号<input name="flight_number" placeholder="如 JU 381"></label>
       <label class="wide">时间价值：多飞 1 小时相当于多花 <b id="hv-out">15</b>
         <input name="hour_value" type="range" min="0" max="80" step="5" value="15">
       </label>
@@ -60,16 +63,54 @@
     </form>
     <div id="search-msg"></div>
     <div id="search-summary"></div>
+    <div id="airline-summary" class="card hidden"></div>
     <div id="scatter" class="card hidden"></div>
     <div id="results"></div>
     <div id="search-links" class="card hidden"></div>
   </section>
 
+  <!-- 多城市 -->
+  <section id="tab-multi" class="tab">
+    <div class="card">
+      <h2>自动排顺序</h2>
+      <p class="hint">给出要去的几个城市和每个城市待几天，程序会试遍所有先后顺序，找出机票总价最低的走法。</p>
+      <form id="opt-form" class="form-grid">
+        <label>出发地<input name="home" class="place" list="places-list" autocomplete="off" required placeholder="曼彻斯特"></label>
+        <label>出发日期<input name="start" type="date" required></label>
+        <label>出发日浮动
+          <select name="start_flex_days"><option value="0">不浮动</option><option value="1">±1 天</option><option value="2">±2 天</option><option value="3">±3 天</option></select>
+        </label>
+        <label>最后回到出发地
+          <select name="return_home"><option value="true">是</option><option value="false">否</option></select>
+        </label>
+        <div class="wide stops" id="stops"></div>
+        <div class="actions wide"><button type="button" class="secondary" id="add-stop">＋ 添加城市</button> <button type="submit">找最便宜的顺序</button></div>
+      </form>
+    </div>
+    <div id="opt-msg"></div>
+    <div id="opt-result"></div>
+
+    <div class="card">
+      <h2>多段航线（顺序固定）</h2>
+      <p class="hint">每一段分别查单程票，列出每段的候选航班和合计价格。</p>
+      <form id="legs-form" class="form-grid">
+        <div class="wide stops" id="legs"></div>
+        <label>指定航司<input name="airlines" placeholder="可选"></label>
+        <label>排序
+          <select name="mode"><option value="best">综合最优</option><option value="cheapest">最便宜</option><option value="fastest">最快</option></select>
+        </label>
+        <div class="actions wide"><button type="button" class="secondary" id="add-leg">＋ 添加一段</button> <button type="submit">查询各段</button></div>
+      </form>
+    </div>
+    <div id="legs-msg"></div>
+    <div id="legs-result"></div>
+  </section>
+
   <!-- 灵活日期 -->
   <section id="tab-flex" class="tab">
     <form id="flex-form" class="card form-grid">
-      <label>出发<input name="origin" required maxlength="3" placeholder="MAN"></label>
-      <label>到达<input name="destination" required maxlength="3" placeholder="PVG"></label>
+      <label>出发<input name="origin" required class="place" list="places-list" autocomplete="off" placeholder="城市或机场，如 曼彻斯特"></label>
+      <label>到达<input name="destination" required class="place" list="places-list" autocomplete="off" placeholder="如 贝尔格莱德 / BEG"></label>
       <label>最早出发<input name="start" type="date" required></label>
       <label>最晚出发<input name="end" type="date" required></label>
       <label>停留天数<input name="trip_days" type="number" min="1" max="60" placeholder="单程留空"></label>
@@ -82,7 +123,7 @@
   <!-- 任意目的地 -->
   <section id="tab-anywhere" class="tab">
     <form id="anywhere-form" class="card form-grid">
-      <label>出发<input name="origin" maxlength="3" placeholder="MAN"></label>
+      <label>出发<input name="origin" class="place" list="places-list" autocomplete="off" placeholder="城市或机场，如 曼彻斯特"></label>
       <label>月份<input name="month" type="month" required></label>
       <label>停留天数<input name="trip_days" type="number" min="1" max="60" placeholder="单程留空"></label>
       <div class="actions"><button type="submit">找最便宜的地方</button></div>
@@ -94,8 +135,8 @@
   <!-- 航线监控 -->
   <section id="tab-watches" class="tab">
     <form id="watch-form" class="card form-grid">
-      <label>出发<input name="origin" required maxlength="3" placeholder="MAN"></label>
-      <label>到达<input name="destination" required maxlength="3" placeholder="PVG"></label>
+      <label>出发<input name="origin" required class="place" list="places-list" autocomplete="off" placeholder="城市或机场，如 曼彻斯特"></label>
+      <label>到达<input name="destination" required class="place" list="places-list" autocomplete="off" placeholder="如 贝尔格莱德 / BEG"></label>
       <label>最早出发<input name="depart_from" type="date" required></label>
       <label>最晚出发<input name="depart_to" type="date" required></label>
       <label>停留天数<input name="trip_days" type="number" min="1" max="60" placeholder="单程留空"></label>
@@ -117,6 +158,8 @@
     <div id="deals-list"></div>
   </section>
 </main>
+
+<datalist id="places-list"></datalist>
 
 <dialog id="booking-dialog">
   <div class="dialog-head"><h2>各渠道价格</h2><button class="link" id="dialog-close">关闭</button></div>

@@ -14,6 +14,7 @@ from .db import Store
 from .fx import FxConverter
 from .links import search_links
 from .models import BookingOption, DateQuote, Itinerary, SearchQuery
+from .places import display_name
 from .providers import FlightProvider, PriceCalendarProvider, ProviderError
 from .providers.demo import DemoCalendarProvider, DemoFlightProvider
 from .providers.duffel import DuffelProvider
@@ -36,9 +37,24 @@ class SearchResult:
     sources: list[str] = field(default_factory=list)
     from_cache: bool = False
 
+    def airline_summary(self) -> list[dict]:
+        """这条航线上每家航司（组合）的最低价、班次数、是否有直飞。"""
+        groups: dict[str, dict] = {}
+        for it in self.itineraries:
+            name = " + ".join(it.airlines) or "未知"
+            g = groups.setdefault(name, {"airline": name, "codes": sorted(it.carrier_codes), "min_price": None, "count": 0, "nonstop": False})
+            price = it.comparable_price()
+            g["min_price"] = price if g["min_price"] is None else min(g["min_price"], price)
+            g["count"] += 1
+            g["nonstop"] = g["nonstop"] or it.total_stops == 0
+        return sorted(groups.values(), key=lambda g: g["min_price"])
+
     def to_view(self) -> dict:
         return {
             "query": self.query.model_dump(mode="json"),
+            "origin_name": display_name(self.query.origin),
+            "destination_name": display_name(self.query.destination),
+            "airline_summary": self.airline_summary(),
             "itineraries": [i.to_view() for i in self.itineraries],
             "errors": self.errors,
             "sources": self.sources,
@@ -104,6 +120,12 @@ class Planner:
             else:
                 sources.append(provider.name)
                 itins += res
+        if query.airlines or query.flight_number:
+            before = len(itins)
+            itins = [it for it in itins if it.matches(query.airlines, query.flight_number)]
+            if before and not itins:
+                what = query.flight_number or "、".join(query.airlines)
+                errors.append(f"找到 {before} 个方案，但没有符合「{what}」的。可能这天没有这个航班，或航司不飞这条航线")
         for it in itins:
             it.price_display = await self.fx.convert(it.price, it.currency)
         if any(it.price_display is None for it in itins):

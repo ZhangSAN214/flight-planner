@@ -53,3 +53,21 @@ def test_index_served(demo_settings):
     c = client(demo_settings)
     assert "航班规划" in c.get("/").text
     assert c.get("/static/app.js").status_code == 200
+
+
+def test_chinese_place_names_and_multi_city(demo_settings):
+    c = client(demo_settings)
+    d = (date.today() + timedelta(days=30)).isoformat()
+    r = c.get("/api/search", params={"origin": "伦敦", "destination": "贝尔格莱德", "depart_date": d, "airlines": "塞尔维亚航空"}).json()
+    assert r["query"]["origin"] == "LON" and r["destination_name"] == "贝尔格莱德"
+    assert r["itineraries"] and all(i["airlines"] == ["Air Serbia"] for i in r["itineraries"])
+    assert r["airline_summary"][0]["codes"] == ["JU"]
+    assert c.get("/api/search", params={"origin": "火星", "destination": "BEG", "depart_date": d}).status_code == 400
+    assert c.get("/api/places", params={"q": "贝尔格"}).json()[0]["code"] == "BEG"
+
+    later = (date.today() + timedelta(days=34)).isoformat()
+    m = c.post("/api/multi-city", json={"legs": [{"origin": "曼彻斯特", "destination": "巴黎", "date": d}, {"origin": "巴黎", "destination": "罗马", "date": later}]}).json()
+    assert m["total_cheapest"] and [l["destination_name"] for l in m["legs"]] == ["巴黎", "罗马"]
+
+    o = c.post("/api/optimize", json={"home": "曼彻斯特", "start": d, "stops": [{"place": "巴黎", "days": 3}, {"place": "罗马", "days": 2}, {"place": "布拉格", "days": 2}]}).json()
+    assert o["plans_checked"] == 6 and o["results"][0]["total"] <= o["worst_total"]
