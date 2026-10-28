@@ -462,7 +462,7 @@ function stopRow(place = "", days = 3) {
   const row = document.createElement("div");
   row.className = "stop-row city";
   row.innerHTML = `<span class="n"></span><input class="place" list="places-list" autocomplete="off" placeholder="城市，如 巴黎" value="${esc(place)}" required>
-    <input type="number" min="1" max="60" value="${days}" title="停留天数" required><button type="button" title="删除">×</button>`;
+    <input type="number" min="1" max="60" value="${days}" title="停留天数" placeholder="待几天" required><button type="button" title="删除">×</button>`;
   row.querySelector("button").addEventListener("click", () => { row.remove(); renumber("#stops"); });
   $("#stops").appendChild(row);
   renumber("#stops");
@@ -517,10 +517,19 @@ function renderOptimize(data) {
     const r = data.results[+b.dataset.legs];
     $("#legs").innerHTML = "";
     r.legs.forEach((l) => legRow(l.origin, l.destination, l.date));
+    setMultiMode("legs");
     $("#legs-form").requestSubmit();
     $("#legs-form").scrollIntoView({ behavior: "smooth" });
   }));
 }
+
+// ---------- 多城市：两种方式切换 ----------
+function setMultiMode(mode) {
+  $$(".seg button").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
+  $("#multi-legs").classList.toggle("hidden", mode !== "legs");
+  $("#multi-opt").classList.toggle("hidden", mode !== "opt");
+}
+$$(".seg button").forEach((b) => b.addEventListener("click", () => setMultiMode(b.dataset.mode)));
 
 // ---------- 多城市：多段航线 ----------
 function legRow(origin = "", destination = "", date = "", flight = "") {

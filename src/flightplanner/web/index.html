@@ -71,9 +71,30 @@
 
   <!-- 多城市 -->
   <section id="tab-multi" class="tab">
+    <div class="seg" role="tablist">
+      <button type="button" class="active" data-mode="legs">多段航线<small>每段自己定日期</small></button>
+      <button type="button" data-mode="opt">自动排顺序<small>只给城市和天数，程序排先后</small></button>
+    </div>
+    <div id="multi-legs" class="multi-mode">
+    <div class="card">
+      <h2>多段航线</h2>
+      <p class="hint">每一段自己填出发地、目的地、<b>日期</b>，航班号可选。每段分别查单程票，列出候选航班和合计价格。中间走陆路的（比如萨拉热窝到蒂瓦特）不用填。</p>
+      <form id="legs-form" class="form-grid">
+        <div class="wide stops" id="legs"></div>
+        <label>指定航司<input name="airlines" placeholder="可选"></label>
+        <label>排序
+          <select name="mode"><option value="best">综合最优</option><option value="cheapest">最便宜</option><option value="fastest">最快</option></select>
+        </label>
+        <div class="actions wide"><button type="button" class="secondary" id="add-leg">＋ 添加一段</button> <button type="submit">查询各段</button></div>
+      </form>
+    </div>
+    <div id="legs-msg"></div>
+    <div id="legs-result"></div>
+    </div>
+    <div id="multi-opt" class="multi-mode hidden">
     <div class="card">
       <h2>自动排顺序</h2>
-      <p class="hint">给出要去的几个城市和每个城市待几天，程序会试遍所有先后顺序，找出机票总价最低的走法。</p>
+      <p class="hint">给出要去的几个城市和每个城市待几天，程序会试遍所有先后顺序，找出机票总价最低的走法。每段日期由出发日期和停留天数推出来；想自己定每段日期，切换到上方的「多段航线」。</p>
       <form id="opt-form" class="form-grid">
         <label>出发地<input name="home" class="place" list="places-list" autocomplete="off" required placeholder="曼彻斯特"></label>
         <label>出发日期<input name="start" type="date" required></label>
@@ -89,21 +110,7 @@
     </div>
     <div id="opt-msg"></div>
     <div id="opt-result"></div>
-
-    <div class="card">
-      <h2>多段航线（顺序固定）</h2>
-      <p class="hint">每一段分别查单程票，列出每段的候选航班和合计价格。</p>
-      <form id="legs-form" class="form-grid">
-        <div class="wide stops" id="legs"></div>
-        <label>指定航司<input name="airlines" placeholder="可选"></label>
-        <label>排序
-          <select name="mode"><option value="best">综合最优</option><option value="cheapest">最便宜</option><option value="fastest">最快</option></select>
-        </label>
-        <div class="actions wide"><button type="button" class="secondary" id="add-leg">＋ 添加一段</button> <button type="submit">查询各段</button></div>
-      </form>
     </div>
-    <div id="legs-msg"></div>
-    <div id="legs-result"></div>
   </section>
 
   <!-- 灵活日期 -->

@@ -59,6 +59,10 @@ input[type=range] { padding: 0; }
 .stop-row { display: grid; grid-template-columns: 28px minmax(120px, 2fr) minmax(120px, 2fr) minmax(150px, 1.4fr) 32px; gap: 8px; align-items: center; }
 .stop-row.leg { grid-template-columns: 28px minmax(110px, 2fr) minmax(110px, 2fr) minmax(150px, 1.4fr) minmax(110px, 1fr) 32px; }
 .stop-row.city { grid-template-columns: 28px minmax(140px, 3fr) minmax(90px, 1fr) 32px; max-width: 560px; }
+.seg { display: inline-flex; gap: 4px; padding: 4px; margin-bottom: 14px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); flex-wrap: wrap; }
+.seg button { background: none; border: 0; border-radius: 8px; padding: 6px 14px; color: var(--muted); text-align: left; font-weight: 600; }
+.seg button small { display: block; font-weight: 400; font-size: 12px; }
+.seg button.active { background: var(--accent-soft); color: var(--accent); }
 .stop-row .n { color: var(--muted); font-size: 13px; text-align: center; }
 .stop-row button { background: none; border: 0; color: var(--muted); font-size: 18px; }
 .order { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 600; }
