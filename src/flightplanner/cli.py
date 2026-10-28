@@ -2,6 +2,7 @@
 
   flightplanner serve                     启动网页（默认 http://127.0.0.1:8010，被占用时自动换下一个端口）
   flightplanner serve --lan               同时让同一 Wi-Fi 下的平板、手机访问（需要访问码）
+  flightplanner serve --cloud             部署在云端时用：监听 $PORT，必须设置 APP_PASSWORD
   flightplanner search MAN PVG 2026-12-01 [--return 2026-12-15] [--mode cheapest]
   flightplanner check                     立即检查所有航线监控
 """
@@ -10,8 +11,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import secrets
 import socket
+import sys
 import webbrowser
 from datetime import date
 
@@ -107,6 +110,7 @@ def main(argv: list[str] | None = None) -> None:
     serve.add_argument("--port", type=int, default=DEFAULT_PORT)
     serve.add_argument("--no-browser", action="store_true")
     serve.add_argument("--lan", action="store_true", help="让同一 Wi-Fi 下的平板、手机也能打开")
+    serve.add_argument("--cloud", action="store_true", help="部署在云端（Render 等）时使用")
 
     search = sub.add_parser("search", help="命令行搜索")
     search.add_argument("origin")
@@ -130,6 +134,11 @@ def main(argv: list[str] | None = None) -> None:
 
         from .api import create_app
 
+        if getattr(args, "cloud", False):
+            if not load_settings().app_password:
+                sys.exit("云端运行必须设置环境变量 APP_PASSWORD，否则任何人都能用你的 API 额度")
+            uvicorn.run(create_app(), host="0.0.0.0", port=int(os.environ.get("PORT", DEFAULT_PORT)), proxy_headers=True, forwarded_allow_ips="*")
+            return
         lan = getattr(args, "lan", False)
         host = "0.0.0.0" if lan else getattr(args, "host", "127.0.0.1")
         port = _free_port(host, getattr(args, "port", DEFAULT_PORT))

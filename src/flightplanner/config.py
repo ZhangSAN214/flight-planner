@@ -42,6 +42,7 @@ class Settings:
     deal_feeds: list[str] = field(default_factory=list)
     data_dir: Path = PROJECT_ROOT / "data"
     force_demo: bool = False
+    app_password: str = ""  # 放到云端时必须设置，打开网页要先输入这个密码
 
     @property
     def demo_mode(self) -> bool:
@@ -80,4 +81,5 @@ def load_settings(env_file: Path | None = None) -> Settings:
         deal_feeds=feeds,
         data_dir=Path(data_dir) if data_dir else PROJECT_ROOT / "data",
         force_demo=get("DEMO_MODE", "").lower() in {"1", "true", "yes"},
+        app_password=get("APP_PASSWORD"),
     )

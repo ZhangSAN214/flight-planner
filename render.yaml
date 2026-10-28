@@ -1,0 +1,29 @@
+# Render 一键部署配置（Blueprint）。密钥在 Render 网页里填，不写进代码。
+services:
+  - type: web
+    name: flight-planner
+    runtime: python
+    plan: free
+    region: frankfurt
+    buildCommand: pip install .
+    startCommand: flightplanner serve --cloud
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: APP_PASSWORD
+        sync: false
+      - key: SERPAPI_KEY
+        sync: false
+      - key: TRAVELPAYOUTS_TOKEN
+        sync: false
+      - key: DUFFEL_TOKEN
+        sync: false
+      - key: SERPAPI_MONTHLY_LIMIT
+        value: "250"
+      - key: CURRENCY
+        value: GBP
+      - key: HOME_AIRPORT
+        value: MAN
+      - key: DATA_DIR
+        value: /tmp/flightplanner

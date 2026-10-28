@@ -83,3 +83,16 @@ def test_lan_access_needs_key(demo_settings):
     assert pad.get("/?key=secret123").status_code == 200
     assert pad.get("/api/status").status_code == 200  # 之后靠 cookie
     assert TestClient(app).get("/api/status").status_code == 200  # 本机不需要
+
+
+def test_password_login(demo_settings):
+    demo_settings.app_password = "pw-123"
+    c = TestClient(create_app(demo_settings, scheduler=False))
+    assert c.get("/api/status").status_code == 401
+    r = c.get("/", follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "/login"
+    assert c.get("/healthz").status_code == 200
+    assert c.post("/login", data={"password": "wrong"}).status_code == 401
+    assert c.post("/login", data={"password": "pw-123"}, follow_redirects=False).status_code == 303
+    assert c.get("/api/status").status_code == 200
+    assert c.get("/").status_code == 200

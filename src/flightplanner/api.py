@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import hmac
 import logging
 from contextlib import asynccontextmanager
+from urllib.parse import parse_qs
 from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -76,6 +78,19 @@ _NEED_KEY_PAGE = """<!doctype html><meta charset="utf-8"><meta name="viewport" c
 <title>需要访问码</title><body style="font:16px/1.6 sans-serif;padding:24px;max-width:520px;margin:auto">
 <h2>需要访问码</h2><p>请用电脑上黑窗口里显示的完整地址打开（地址末尾带 <code>?key=…</code>）。</p></body>"""
 
+LOGIN_COOKIE = "fp_login"
+_LOGIN_PAGE = """<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>登录 · 航班规划</title><link rel="apple-touch-icon" href="/static/icon-180.png">
+<body style="font:16px/1.6 -apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;padding:24px;max-width:360px;margin:12vh auto">
+<h2>航班规划与特价雷达</h2>{error}
+<form method="post" action="/login"><input type="password" name="password" placeholder="密码" autofocus required
+style="font:inherit;width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;margin:8px 0">
+<button style="font:inherit;width:100%;padding:10px;border:0;border-radius:8px;background:#2563eb;color:#fff">登录</button></form></body>"""
+
+
+def _login_token(password: str) -> str:
+    return hmac.new(password.encode(), b"flightplanner-login", hashlib.sha256).hexdigest()
+
 
 def create_app(
     settings: Settings | None = None, planner: Planner | None = None, scheduler: bool = True, lan_key: str | None = None
@@ -95,6 +110,39 @@ def create_app(
     app = FastAPI(title="航班规划与特价雷达", lifespan=lifespan)
     app.state.planner = planner
     app.state.store = store
+
+    if settings.app_password:
+        token = _login_token(settings.app_password)
+
+        @app.get("/login")
+        async def login_page():
+            return HTMLResponse(_LOGIN_PAGE.format(error=""))
+
+        @app.post("/login")
+        async def login(request: Request):
+            form = parse_qs((await request.body()).decode())
+            if hmac.compare_digest(form.get("password", [""])[0], settings.app_password):
+                resp = RedirectResponse("/", status_code=303)
+                https = request.headers.get("x-forwarded-proto", request.url.scheme) == "https"
+                resp.set_cookie(LOGIN_COOKIE, token, max_age=400 * 24 * 3600, httponly=True, samesite="lax", secure=https)
+                return resp
+            await asyncio.sleep(1)  # 减慢猜密码
+            return HTMLResponse(_LOGIN_PAGE.format(error='<p style="color:#b91c1c">密码不对</p>'), status_code=401)
+
+        @app.middleware("http")
+        async def require_login(request: Request, call_next):
+            path = request.url.path
+            if path.startswith("/static/") or path == "/login" or path == "/healthz":
+                return await call_next(request)
+            if hmac.compare_digest(request.cookies.get(LOGIN_COOKIE, ""), token):
+                return await call_next(request)
+            if path.startswith("/api/"):
+                return JSONResponse({"detail": "登录已失效，请刷新页面重新登录"}, status_code=401)
+            return RedirectResponse("/login", status_code=303)
+
+    @app.get("/healthz")
+    async def healthz():
+        return {"ok": True}
 
     if lan_key:
         @app.middleware("http")

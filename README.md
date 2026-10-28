@@ -49,6 +49,17 @@ flightplanner serve       # 打开 http://127.0.0.1:8010（被占用时自动换
 
 访问码 `key` 防止同一网络里的其他人用你的 API 额度，不要发给别人；删除 `data/lan_key.txt` 再重启就会换一个。学校宿舍等公共 Wi-Fi 常常禁止设备互相访问，这种情况下平板连不上，可以用电脑开热点让平板连。电脑关机或关掉黑窗口后平板就打不开了。
 
+### 放到云端（Render）
+
+部署后用一个 https 网址在任何地方打开，平板、手机都行，电脑不用开着。
+
+1. 把代码放到自己的 GitHub 仓库（建议设为 Private）。
+2. 注册 [Render](https://render.com)，用 GitHub 登录，点 New → Blueprint，选这个仓库。仓库里的 `render.yaml` 已经写好了设置。
+3. Render 会让你填几个值：`APP_PASSWORD`（自己定一个登录密码，必填）、`SERPAPI_KEY`、`TRAVELPAYOUTS_TOKEN`、`DUFFEL_TOKEN`（有哪个填哪个）。
+4. 部署完会得到 `https://flight-planner-xxxx.onrender.com`，打开后输入密码即可。平板上可以「添加到主屏幕」。
+
+免费版的限制：15 分钟没人访问会休眠，再打开要等大约 1 分钟；休眠或重新部署后，航线监控、价格历史和 API 用量计数会清空，定时提醒也不会在休眠时运行。只用搜索比价、多城市、灵活日期不受影响。需要长期监控时可以升级付费实例并加一块磁盘，把 `DATA_DIR` 指到磁盘上。
+
 命令行也能查：
 
 ```bash
