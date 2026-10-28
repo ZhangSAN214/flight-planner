@@ -1,6 +1,7 @@
 """命令行：
 
   flightplanner serve                     启动网页（默认 http://127.0.0.1:8010，被占用时自动换下一个端口）
+  flightplanner serve --lan               同时让同一 Wi-Fi 下的平板、手机访问（需要访问码）
   flightplanner search MAN PVG 2026-12-01 [--return 2026-12-15] [--mode cheapest]
   flightplanner check                     立即检查所有航线监控
 """
@@ -9,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import secrets
 import socket
 import webbrowser
 from datetime import date
@@ -75,6 +77,27 @@ def _free_port(host: str, port: int, tries: int = 20) -> int:
     return port
 
 
+def _lan_ip() -> str:
+    """本机在局域网里的地址（UDP connect 不会真的发数据）。"""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        try:
+            s.connect(("10.255.255.255", 1))
+            return s.getsockname()[0]
+        except OSError:
+            return "127.0.0.1"
+
+
+def _lan_key() -> str:
+    """局域网访问码，存在 data 目录里，重启后不变，平板上的书签可以一直用。"""
+    path = load_settings().data_dir / "lan_key.txt"
+    if path.exists() and path.read_text().strip():
+        return path.read_text().strip()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    key = secrets.token_urlsafe(9)
+    path.write_text(key)
+    return key
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="flightplanner", description="航班规划与特价雷达")
     sub = parser.add_subparsers(dest="cmd")
@@ -83,6 +106,7 @@ def main(argv: list[str] | None = None) -> None:
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=DEFAULT_PORT)
     serve.add_argument("--no-browser", action="store_true")
+    serve.add_argument("--lan", action="store_true", help="让同一 Wi-Fi 下的平板、手机也能打开")
 
     search = sub.add_parser("search", help="命令行搜索")
     search.add_argument("origin")
@@ -106,12 +130,21 @@ def main(argv: list[str] | None = None) -> None:
 
         from .api import create_app
 
-        host = getattr(args, "host", "127.0.0.1")
+        lan = getattr(args, "lan", False)
+        host = "0.0.0.0" if lan else getattr(args, "host", "127.0.0.1")
         port = _free_port(host, getattr(args, "port", DEFAULT_PORT))
-        print(f"航班规划已启动：http://{host}:{port}  （关掉这个窗口就会停止）")
+        key = _lan_key() if lan else None
+        print(f"航班规划已启动：http://127.0.0.1:{port}  （关掉这个窗口就会停止）")
+        if lan:
+            print()
+            print("平板 / 手机（连同一个 Wi-Fi）打开下面这个地址：")
+            print(f"    http://{_lan_ip()}:{port}/?key={key}")
+            print("第一次运行时 Windows 可能弹出防火墙提示，请勾选「专用网络」并允许。")
+            print("访问码只给自己用；想换一个，删除 data\\lan_key.txt 再重启。")
+            print()
         if not getattr(args, "no_browser", False):
-            webbrowser.open(f"http://{host}:{port}")
-        uvicorn.run(create_app(), host=host, port=port)
+            webbrowser.open(f"http://127.0.0.1:{port}")
+        uvicorn.run(create_app(lan_key=key), host=host, port=port)
 
 
 if __name__ == "__main__":

@@ -71,3 +71,15 @@ def test_chinese_place_names_and_multi_city(demo_settings):
 
     o = c.post("/api/optimize", json={"home": "曼彻斯特", "start": d, "stops": [{"place": "巴黎", "days": 3}, {"place": "罗马", "days": 2}, {"place": "布拉格", "days": 2}]}).json()
     assert o["plans_checked"] == 6 and o["results"][0]["total"] <= o["worst_total"]
+
+
+def test_lan_access_needs_key(demo_settings):
+    app = create_app(demo_settings, scheduler=False, lan_key="secret123")
+    pad = TestClient(app, client=("192.168.1.20", 50000))
+    assert pad.get("/").status_code == 401
+    assert pad.get("/api/status").status_code == 401
+    assert pad.get("/static/style.css").status_code == 200
+    assert pad.get("/?key=wrong").status_code == 401
+    assert pad.get("/?key=secret123").status_code == 200
+    assert pad.get("/api/status").status_code == 200  # 之后靠 cookie
+    assert TestClient(app).get("/api/status").status_code == 200  # 本机不需要

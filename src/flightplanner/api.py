@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
 import logging
 from contextlib import asynccontextmanager
 from datetime import date
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -69,7 +70,17 @@ class WatchIn(BaseModel):
     target_price: float | None = None
 
 
-def create_app(settings: Settings | None = None, planner: Planner | None = None, scheduler: bool = True) -> FastAPI:
+LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost", "testclient"}
+KEY_COOKIE = "fp_key"
+_NEED_KEY_PAGE = """<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>需要访问码</title><body style="font:16px/1.6 sans-serif;padding:24px;max-width:520px;margin:auto">
+<h2>需要访问码</h2><p>请用电脑上黑窗口里显示的完整地址打开（地址末尾带 <code>?key=…</code>）。</p></body>"""
+
+
+def create_app(
+    settings: Settings | None = None, planner: Planner | None = None, scheduler: bool = True, lan_key: str | None = None
+) -> FastAPI:
+    """lan_key：在局域网开放时（平板、手机访问），非本机的请求必须带这个访问码。"""
     settings = settings or load_settings()
     store = planner.store if planner else Store(settings.db_path)
     planner = planner or Planner(settings, store)
@@ -84,6 +95,23 @@ def create_app(settings: Settings | None = None, planner: Planner | None = None,
     app = FastAPI(title="航班规划与特价雷达", lifespan=lifespan)
     app.state.planner = planner
     app.state.store = store
+
+    if lan_key:
+        @app.middleware("http")
+        async def require_key(request: Request, call_next):
+            host = request.client.host if request.client else ""
+            if host in LOCAL_HOSTS or request.url.path.startswith("/static/"):
+                return await call_next(request)
+            given = request.query_params.get("key")
+            if hmac.compare_digest(request.cookies.get(KEY_COOKIE, ""), lan_key):
+                return await call_next(request)
+            if given and hmac.compare_digest(given, lan_key):
+                resp = await call_next(request)
+                resp.set_cookie(KEY_COOKIE, lan_key, max_age=400 * 24 * 3600, httponly=True, samesite="strict")
+                return resp
+            if request.url.path.startswith("/api/"):
+                return JSONResponse({"detail": "需要访问码：请用电脑黑窗口里显示的完整地址重新打开"}, status_code=401)
+            return HTMLResponse(_NEED_KEY_PAGE, status_code=401)
 
     def bad_request(e: Exception) -> HTTPException:
         return HTTPException(status_code=400, detail=str(e))
