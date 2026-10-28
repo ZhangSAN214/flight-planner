@@ -35,7 +35,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 cp .env.example .env      # 按下面说明填写
-flightplanner serve       # 打开 http://127.0.0.1:8000
+flightplanner serve       # 打开 http://127.0.0.1:8010（被占用时自动换端口，以窗口里显示的地址为准）
 ```
 
 命令行也能查：

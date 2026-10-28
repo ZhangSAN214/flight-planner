@@ -1,6 +1,6 @@
 """命令行：
 
-  flightplanner serve                     启动网页（默认 http://127.0.0.1:8000）
+  flightplanner serve                     启动网页（默认 http://127.0.0.1:8010，被占用时自动换下一个端口）
   flightplanner search MAN PVG 2026-12-01 [--return 2026-12-15] [--mode cheapest]
   flightplanner check                     立即检查所有航线监控
 """
@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import socket
 import webbrowser
 from datetime import date
 
@@ -58,13 +59,29 @@ async def _check() -> None:
         print(r)
 
 
+DEFAULT_PORT = 8010
+
+
+def _free_port(host: str, port: int, tries: int = 20) -> int:
+    """端口被别的程序占用时（比如另一个也用 8000 的本地网页），往后找一个空闲端口。"""
+    for p in range(port, port + tries):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind((host, p))
+                return p
+            except OSError:
+                if p == port:
+                    print(f"端口 {p} 已被其他程序占用，换一个端口")
+    return port
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="flightplanner", description="航班规划与特价雷达")
     sub = parser.add_subparsers(dest="cmd")
 
     serve = sub.add_parser("serve", help="启动网页")
     serve.add_argument("--host", default="127.0.0.1")
-    serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--port", type=int, default=DEFAULT_PORT)
     serve.add_argument("--no-browser", action="store_true")
 
     search = sub.add_parser("search", help="命令行搜索")
@@ -90,7 +107,8 @@ def main(argv: list[str] | None = None) -> None:
         from .api import create_app
 
         host = getattr(args, "host", "127.0.0.1")
-        port = getattr(args, "port", 8000)
+        port = _free_port(host, getattr(args, "port", DEFAULT_PORT))
+        print(f"航班规划已启动：http://{host}:{port}  （关掉这个窗口就会停止）")
         if not getattr(args, "no_browser", False):
             webbrowser.open(f"http://{host}:{port}")
         uvicorn.run(create_app(), host=host, port=port)

@@ -153,3 +153,14 @@ async def test_multi_leg_totals(store, demo_settings):
     assert res["total_cheapest"] == 90 and len(res["legs"]) == 2
     with pytest.raises(ProviderError, match="早于"):
         await multi_leg(planner, [Leg(origin="MAN", destination="PAR", date=d), Leg(origin="PAR", destination="ROM", date=d - timedelta(days=1))], Preferences())
+
+
+def test_country_name_asks_for_city():
+    import pytest
+
+    from flightplanner.places import UnknownPlace, resolve
+
+    with pytest.raises(UnknownPlace) as e:
+        resolve("英国")
+    assert "伦敦" in str(e.value)
+    assert e.value.suggestions[0].code == "LON"

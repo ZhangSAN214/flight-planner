@@ -18,6 +18,9 @@ const TAG_LABELS = {
 async function api(path, opts = {}) {
   const resp = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
   const data = await resp.json().catch(() => ({}));
+  if (resp.status === 405 || (resp.status === 404 && data.detail === "Not Found")) {
+    throw new Error("这个地址上运行的不是航班规划程序（端口可能被别的程序占用）。请关掉其他本地网页程序，重新双击 start.bat，用窗口里显示的地址打开");
+  }
   if (!resp.ok) throw new Error(typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail || data));
   return data;
 }

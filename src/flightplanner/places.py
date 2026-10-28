@@ -219,11 +219,33 @@ AIRPORT_ALIASES: dict[str, str] = {
 
 
 class UnknownPlace(ValueError):
-    def __init__(self, text: str, suggestions: list[Place]):
+    def __init__(self, text: str, suggestions: list[Place], message: str | None = None):
         self.text = text
         self.suggestions = suggestions
         hint = "；你是不是要找：" + "、".join(p.label for p in suggestions[:5]) if suggestions else "；可以直接输入三字机场代码"
-        super().__init__(f"不认识的地点「{text}」{hint}")
+        super().__init__(message or f"不认识的地点「{text}」{hint}")
+
+
+# 国家名不能直接当地点用（一个国家有很多机场），提示改填城市
+COUNTRIES: dict[str, tuple[str, ...]] = {
+    "英国/uk/unitedkingdom/britain/greatbritain/england/英格兰": ("LON", "MAN", "BHX", "EDI"),
+    "苏格兰/scotland": ("EDI", "GLA", "ABZ"),
+    "爱尔兰/ireland": ("DUB",),
+    "法国/france": ("PAR", "NCE", "LYS"),
+    "德国/germany": ("BER", "FRA", "MUC"),
+    "意大利/italy": ("ROM", "MIL", "VCE"),
+    "西班牙/spain": ("MAD", "BCN"),
+    "塞尔维亚/serbia": ("BEG",),
+    "波黑/波斯尼亚/bosnia/bosniaandherzegovina": ("SJJ",),
+    "黑山/montenegro": ("TIV", "TGD"),
+    "克罗地亚/croatia": ("DBV", "SPU", "ZAG"),
+    "中国/china": ("BJS", "SHA", "CAN"),
+    "日本/japan": ("TYO", "OSA"),
+    "美国/usa/us/unitedstates/america": ("NYC", "LAX", "SFO"),
+}
+_COUNTRY_BY_NAME: dict[str, tuple[str, tuple[str, ...]]] = {
+    n: (names.split("/")[0], codes) for names, codes in COUNTRIES.items() for n in names.split("/")
+}
 
 
 def search_places(text: str, limit: int = 8) -> list[Place]:
@@ -251,6 +273,11 @@ def resolve(text: str) -> str:
     q = _norm(raw)
     if q in _BY_NAME:
         return _BY_NAME[q].code
+    if q in _COUNTRY_BY_NAME:
+        country, codes = _COUNTRY_BY_NAME[q]
+        cities = [BY_CODE[c] for c in codes if c in BY_CODE]
+        names = "、".join(c.zh[0] for c in cities) or "城市名"
+        raise UnknownPlace(raw, cities, f"「{raw}」是国家，请填具体城市或机场，比如 {names}")
     upper = raw.upper()
     if re.fullmatch(r"[A-Z]{3}", upper):
         return upper
